@@ -11,7 +11,7 @@ function loadManifest() -- load manifest as a normal code
     end
 
     local clone = table.clone(_G)
-    local metatable = { -- creatibg a magic method system do detect manifest commands
+    local metatable = { -- creating a magic method system do detect manifest commands
         __index = function(t,k,v)
             if clone[k] then
                 return clone[k] -- also returns the same value
@@ -31,7 +31,25 @@ function loadManifest() -- load manifest as a normal code
 
     setmetatable(_G, nil) -- removing the magic method system do detect manifest
 
-    table.dump(manifestCommands)
+    createFolder('dist') -- Creating the result folder
+
+    createDocument('fxmanifest.lua') -- Creating the base manifest
+
+    createDocument('script.lua') -- Creating the base script code
+end
+
+function createFolder(name, dir) -- dir beeing nil, will create on the exacly same dir that run the entire program
+    if dir then
+        os.execute('cd '..dir..' && mkdir ' .. name)
+    else
+        os.execute('mkdir ' .. name)
+    end
+end
+
+function createDocument(name, dir)
+    dir = dir or ''
+    local file = io.open(dir .. name) 
+    file:close()
 end
 
 function readFile(dir)
