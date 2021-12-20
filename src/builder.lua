@@ -78,7 +78,7 @@ function writeText(o)
         for _,v in ipairs(o) do
             baseString = baseString..'    '..writeText(v)..',\n'
         end
-        baseString = '\n'..baseString..'}'
+        baseString = baseString..'}'
         return baseString
     end
     return '"' .. tostring(o) .. '"'
