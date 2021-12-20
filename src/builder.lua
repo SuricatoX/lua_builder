@@ -38,22 +38,24 @@ function loadManifest() -- load manifest as a normal code
     createDocument('dist/script.lua') -- Creating the base script code
 
     writeManifestContent(manifestCommands) -- Writing commands into manifest
+
+    writeScriptContent(manifestCommands) -- Write into script.lua server, client and also shared
 end
 
 local patternKeys = {
-    server_scripts = true,
-    server_script = true,
-    client_scripts = true,
-    client_script = true,
-    shared_scripts = true,
-    shared_script = true
+    server_scripts = 'server',
+    server_script = 'server',
+    client_scripts = 'client',
+    client_script = 'client',
+    shared_scripts = 'shared',
+    shared_script = 'shared'
 }
 
 function writeManifestContent(manifestCommands)
     local manifestContent = 'fx_version ' -- Creating base string
 
     manifestContent = manifestContent..writeText(manifestCommands.fx_version[1])..'\n' -- Base start into manifest
-    manifestContent = manifestContent..'game '..writeText(manifestCommands.game[1])..'\n' -- Base start into manifest
+    manifestContent = manifestContent..'game '..writeText(manifestCommands.game[1])..'\n\n' -- Base start into manifest
 
     manifestCommands.fx_version = nil
     manifestCommands.game = nil
@@ -65,11 +67,37 @@ function writeManifestContent(manifestCommands)
                 manifestContent = manifestContent .. writeText(dir) .. ' '
             end
         end
-        manifestContent = manifestContent .. '\n'
+        manifestContent = manifestContent .. '\n\n'
     end
 
-    print(manifestContent)
+    manifestContent = manifestContent .. 'server_script "script.lua"\n\nclient_script "script.lua"'
+
     writeFile('dist/fxmanifest.lua', manifestContent)
+end
+
+function writeScriptContent(manifestCommands)
+    -- {name = <string>, code = <string>}
+    local serverCodes = getAllSideCode(manifestCommands, 'server')
+    local clientCodes = {}
+    local sharedCodes = {}
+end
+
+function getAllSideCode(manifestCommands, side)
+    -- {name = <string>, code = <string>}
+    local sideCode = {}
+    for k,v in pairs(manifestCommands) do
+        if v == side then
+            if type(v) == 'string' then
+                table.insert(sideCode, readFile('resource/'..v))
+            else
+                for _,dir in ipairs(v) do
+                    table.insert(sideCode, getCode('resource/'..dir))
+                end
+            end
+        end
+    end
+    table.dump(sideCode)
+    return sideCode
 end
 
 function writeText(o)
@@ -106,7 +134,6 @@ end
 
 function writeFile(name, text)
     local file = io.open(name, "w")
-    print(2,file:read("*a"))
     file:write(text)
     file:close()
 end
