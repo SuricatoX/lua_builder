@@ -1,5 +1,5 @@
 function loadManifest() -- load manifest as a normal code
-    local code = readFile('fxmanifest.lua')
+    local code = readFile('resource/fxmanifest.lua')
     local manifestCommands = {} -- all commands in manifest
 
     function registerManifestCommand(key,firstCommand)
@@ -33,9 +33,55 @@ function loadManifest() -- load manifest as a normal code
 
     createFolder('dist') -- Creating the result folder
 
-    createDocument('fxmanifest.lua') -- Creating the base manifest
+    createDocument('dist/fxmanifest.lua') -- Creating the base manifest
 
-    createDocument('script.lua') -- Creating the base script code
+    createDocument('dist/script.lua') -- Creating the base script code
+
+    writeManifestContent(manifestCommands) -- Writing commands into manifest
+end
+
+local patternKeys = {
+    server_scripts = true,
+    server_script = true,
+    client_scripts = true,
+    client_script = true,
+    shared_scripts = true,
+    shared_script = true
+}
+
+function writeManifestContent(manifestCommands)
+    local manifestContent = 'fx_version ' -- Creating base string
+
+    manifestContent = manifestContent..writeText(manifestCommands.fx_version[1])..'\n' -- Base start into manifest
+    manifestContent = manifestContent..'game '..writeText(manifestCommands.game[1])..'\n' -- Base start into manifest
+
+    manifestCommands.fx_version = nil
+    manifestCommands.game = nil
+
+    for k,v in pairs(manifestCommands) do
+        if not patternKeys[k] then
+            manifestContent = manifestContent .. k .. ' '        
+            for _,dir in ipairs(v) do
+                manifestContent = manifestContent .. writeText(dir) .. ' '
+            end
+        end
+        manifestContent = manifestContent .. '\n'
+    end
+
+    print(manifestContent)
+    writeFile('dist/fxmanifest.lua', manifestContent)
+end
+
+function writeText(o)
+    if type(o) == 'table' then
+        local baseString = '{\n'
+        for _,v in ipairs(o) do
+            baseString = baseString..'    '..writeText(v)..',\n'
+        end
+        baseString = '\n'..baseString..'}'
+        return baseString
+    end
+    return '"' .. tostring(o) .. '"'
 end
 
 function createFolder(name, dir) -- dir beeing nil, will create on the exacly same dir that run the entire program
@@ -46,9 +92,8 @@ function createFolder(name, dir) -- dir beeing nil, will create on the exacly sa
     end
 end
 
-function createDocument(name, dir)
-    dir = dir or ''
-    local file = io.open(dir .. name) 
+function createDocument(name)
+    local file = io.open(name, "w") 
     file:close()
 end
 
@@ -57,6 +102,13 @@ function readFile(dir)
     local content = file:read("*a")
     io.close(file)
     return content
+end
+
+function writeFile(name, text)
+    local file = io.open(name, "w")
+    print(2,file:read("*a"))
+    file:write(text)
+    file:close()
 end
 
 function table:clone()
