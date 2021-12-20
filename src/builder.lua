@@ -78,25 +78,43 @@ end
 function writeScriptContent(manifestCommands)
     -- {name = <string>, code = <string>}
     local serverCodes = getAllSideCode(manifestCommands, 'server')
-    local clientCodes = {}
-    local sharedCodes = {}
+    local clientCodes = getAllSideCode(manifestCommands, 'client')
+    local sharedCodes = getAllSideCode(manifestCommands, 'shared')
+    local scriptCode = 'if IsDuplicityVersion() then\n'
+    local serverCode = constructText(serverCodes)
+    scriptCode = scriptCode .. pText(serverCode) .. '\nelse\n'
+    local clientCode = constructText(clientCodes)
+    scriptCode = scriptCode .. pText(clientCode) .. '\nend'
+    local sharedCode = constructText(sharedCodes)
+    scriptCode = scriptCode .. '\n\n' .. sharedCode
+    writeFile('dist/script.lua', scriptCode)
+end
+
+function constructText(sideCodes)
+    local text = ''
+    for k,v in ipairs(sideCodes) do
+        text = text .. '_G['..writeText(v.name)..'] = function()' .. '\n' ..
+        pText(v.code) .. '\n' ..
+        'end' .. '\n' ..
+        '_G['..writeText(v.name)..']()\n\n'
+    end
+    return text
 end
 
 function getAllSideCode(manifestCommands, side)
     -- {name = <string>, code = <string>}
     local sideCode = {}
     for k,v in pairs(manifestCommands) do
-        if v == side then
-            if type(v) == 'string' then
-                table.insert(sideCode, readFile('resource/'..v))
+        if patternKeys[k] == side then
+            if type(v[1]) == 'string' then
+                table.insert(sideCode, {name = v[1], code = readFile('resource/'..v[1])})
             else
-                for _,dir in ipairs(v) do
-                    table.insert(sideCode, getCode('resource/'..dir))
+                for _,dir in ipairs(v[1]) do
+                    table.insert(sideCode, {name = dir, code = readFile('resource/'..dir)})
                 end
             end
         end
     end
-    table.dump(sideCode)
     return sideCode
 end
 
@@ -104,12 +122,29 @@ function writeText(o)
     if type(o) == 'table' then
         local baseString = '{\n'
         for _,v in ipairs(o) do
-            baseString = baseString..'    '..writeText(v)..',\n'
+            baseString = baseString..p()..writeText(v)..',\n'
         end
         baseString = baseString..'}'
         return baseString
     end
     return '"' .. tostring(o) .. '"'
+end
+
+function p()
+    return '    '
+end
+
+function pText(text)
+    local newString = p()
+    for i = 1, #text do
+        local c = text:sub(i,i)
+        if c:byte() == 10 then
+            newString = newString .. c .. p()
+        else
+            newString = newString .. c
+        end    
+    end
+    return newString
 end
 
 function createFolder(name, dir) -- dir beeing nil, will create on the exacly same dir that run the entire program
