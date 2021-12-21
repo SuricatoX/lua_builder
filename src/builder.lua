@@ -39,6 +39,8 @@ function loadManifest() -- load manifest as a normal code
 
     createDocument('dist/script.lua') -- Creating the base script code
 
+    handleManifestCommands(manifestCommands)
+
     writeManifestContent(manifestCommands) -- Writing commands into manifest
 
     writeScriptContent(manifestCommands) -- Write into script.lua server, client and also shared
@@ -51,6 +53,23 @@ local patternKeys = {
     client_script = 'client',
     shared_scripts = 'shared',
     shared_script = 'shared'
+}
+
+local pluralKeys = {
+    server_script = 'server_scripts',
+    client_script = 'client_scripts',
+    shared_script = 'shared_scripts',
+    file = 'files'
+}
+
+local directoryKeys = {
+    server_scripts = true,
+    server_script = true,
+    client_scripts = true,
+    client_script = true,
+    shared_scripts = true,
+    shared_script = true,
+    files = true
 }
 
 function writeManifestContent(manifestCommands)
@@ -144,6 +163,39 @@ function getAllSideCode(manifestCommands, side)
         end
     end
     return sideCode
+end
+
+function handleManifestCommands(manifestCommands)
+    for command,v in pairs(manifestCommands) do
+        if directoryKeys[command] then
+            if type(v[1]) == 'string' then
+                local dir = v[1]
+                local o = dir:split('/')
+                local sDirectory = ''
+                for _,word in ipairs(o) do
+                    if word:find('%*%*') then -- Vendo se é pra pegar todas as pastas naquela word
+                        local allFiles = findAllFiles(sDirectory)
+                        for f in allFiles:lines() do
+                            if not f:find('%.') then
+                                manifestCommands
+                            end
+                        end
+                    end
+                    sDirectory = sDirectory .. word .. '/'
+                end
+            else
+                for _,dir in ipairs(v[1]) do
+
+                end
+            end
+        end
+    end
+end
+
+function findAllFiles(dir)
+    local i,t = 0,{}
+    local pfile = io.popen('dir "resource/'..dir..'" /b')
+    return pFile
 end
 
 function writeText(o)
