@@ -1,11 +1,64 @@
+local patternKeys = {
+    server_scripts = 'server',
+    server_script = 'server',
+    client_scripts = 'client',
+    client_script = 'client',
+    shared_scripts = 'shared',
+    shared_script = 'shared'
+}
+
+local pluralKeys = {
+    server_script = 'server_scripts',
+    client_script = 'client_scripts',
+    shared_script = 'shared_scripts',
+    file = 'files'
+}
+
+local singularKeys = {
+    server_scripts = 'server_script',
+    client_scripts = 'client_script',
+    shared_scripts = 'shared_script',
+    files = 'file'
+}
+
+local directoryKeys = {
+    server_scripts = true,
+    server_script = true,
+    client_scripts = true,
+    client_script = true,
+    shared_scripts = true,
+    shared_script = true,
+    files = true
+}
+
 function loadManifest() -- load manifest as a normal code
     print('\27[32mStarting build!')
     print('\27[34m')
     local code = readFile('resource/fxmanifest.lua')
     local manifestCommands = {} -- all commands in manifest
 
-    function registerManifestCommand(key,firstCommand)
-        manifestCommands[key] = {firstCommand}
+    function registerManifestCommand(key, firstCommand)
+        if pluralKeys[key] then
+            insertInManifestCommands(pluralKeys[key], firstCommand) -- this freaking thing is because fivem sucks on manifest by permitting singulars and plural calls (im just transforming them into plural, its better XD)
+        else
+            insertInManifestCommands(key, firstCommand)
+        end
+    end
+
+    function insertInManifestCommands(key, command)
+        -- create, if does not exist, a plural command, because singular commands will be called here by being plural commands
+        if singularKeys[key] and not manifestCommands[key] then
+            manifestCommands[key] = {{}}
+        end
+        if singularKeys[key] and type(command) == 'string' then -- If true, OBVIOUSLY IS A SINGULAR COMMAND THAT WAS PASSED (OR IF THE FUCKING USER FOLLOW WRONG STRUCTURE ON MANIFEST)
+            table.insert(manifestCommands[key][1], command)
+        elseif singularKeys[key] then -- also a table in the commands on singularKeys
+            for _,dir in ipairs(command) do
+                table.insert(manifestCommands[key][1], dir)
+            end
+        else
+            manifestCommands[key] = {command}
+        end
     end
 
     function registerSecondaryManifestCommand(key, secondCommand)
@@ -46,31 +99,14 @@ function loadManifest() -- load manifest as a normal code
     writeScriptContent(manifestCommands) -- Write into script.lua server, client and also shared
 end
 
-local patternKeys = {
-    server_scripts = 'server',
-    server_script = 'server',
-    client_scripts = 'client',
-    client_script = 'client',
-    shared_scripts = 'shared',
-    shared_script = 'shared'
-}
-
-local pluralKeys = {
-    server_script = 'server_scripts',
-    client_script = 'client_scripts',
-    shared_script = 'shared_scripts',
-    file = 'files'
-}
-
-local directoryKeys = {
-    server_scripts = true,
-    server_script = true,
-    client_scripts = true,
-    client_script = true,
-    shared_scripts = true,
-    shared_script = true,
-    files = true
-}
+function removeSingularCommandsInManifest(manifestCommands)
+    for command,v in pairs(manifestCommands) do
+        local dir = v[1]
+        if pluralKeys[command] then
+            
+        end
+    end
+end
 
 function writeManifestContent(manifestCommands)
     local manifestContent = 'fx_version ' -- Creating base string
