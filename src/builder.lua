@@ -102,7 +102,6 @@ function transferFiles(manifestCommands) -- transfering filer from the resource
             for _,value in ipairs(o) do
                 if _ < #o then -- Dont load on the last index
                     createFolder(value, sDirectory)
-                    print(value, sDirectory)
                     sDirectory = sDirectory .. value .. '/'
                 end
             end
