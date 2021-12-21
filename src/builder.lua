@@ -1,4 +1,6 @@
 function loadManifest() -- load manifest as a normal code
+    print('\27[32mStarting build!')
+    print('\27[34m')
     local code = readFile('resource/fxmanifest.lua')
     local manifestCommands = {} -- all commands in manifest
 
@@ -92,6 +94,10 @@ function writeScriptContent(manifestCommands)
     scriptCode = scriptCode .. pText(clientCode) .. '\nend'
     writeFile('dist/script.lua', scriptCode)
     transferFiles(manifestCommands)
+
+    print(print('\27[32m\n\n\n\n'))
+    print(print('\27[32mYour script was sucessfully builded!'))
+    print(print('\27[32mCheck releases on https://github.com/SuricatoX/lua_builder'))
 end
 
 function transferFiles(manifestCommands) -- transfering filer from the resource
@@ -189,7 +195,7 @@ end
 function readFile(dir)
     local file = io.open(dir,"r")
     if not file then
-        error(tostring(dir) .. ' this directory doesnt exist')
+        error('\27[31m' .. tostring(dir) .. ' this directory doesnt exist')
     end
     local content = file:read("*a")
     io.close(file)
