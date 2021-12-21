@@ -80,13 +80,16 @@ function writeScriptContent(manifestCommands)
     local serverCodes = getAllSideCode(manifestCommands, 'server')
     local clientCodes = getAllSideCode(manifestCommands, 'client')
     local sharedCodes = getAllSideCode(manifestCommands, 'shared')
-    local scriptCode = 'if IsDuplicityVersion() then\n'
+    
+    local sharedCode = constructText(sharedCodes)
+    local scriptCode = sharedCode
+
+    scriptCode = scriptCode .. '\n\nif IsDuplicityVersion() then\n'
+
     local serverCode = constructText(serverCodes)
     scriptCode = scriptCode .. pText(serverCode) .. '\nelse\n'
     local clientCode = constructText(clientCodes)
     scriptCode = scriptCode .. pText(clientCode) .. '\nend'
-    local sharedCode = constructText(sharedCodes)
-    scriptCode = scriptCode .. '\n\n' .. sharedCode
     writeFile('dist/script.lua', scriptCode)
     transferFiles(manifestCommands)
 end
@@ -97,8 +100,11 @@ function transferFiles(manifestCommands) -- transfering filer from the resource
             local o = dir:split('/')
             local sDirectory = 'dist/'
             for _,value in ipairs(o) do
-                createFolder(value, sDirectory)
-                sDirectory = sDirectory .. value
+                if _ < #o then -- Dont load on the last index
+                    createFolder(value, sDirectory)
+                    print(value, sDirectory)
+                    sDirectory = sDirectory .. value .. '/'
+                end
             end
             transferFile('./resource/'..dir, './dist/'..dir)
         end
@@ -122,11 +128,11 @@ function getAllSideCode(manifestCommands, side)
     for k,v in pairs(manifestCommands) do
         if patternKeys[k] == side then
             if type(v[1]) == 'string' and not v[1]:find('@') then
-                table.insert(sideCode, {name = v[1], code = readFile('resource/'..v[1])})
+                table.insert(sideCode, {name = v[1], code = handleModule(readFile('resource/'..v[1]))})
             else
                 for _,dir in ipairs(v[1]) do
                     if not dir:find('@') then
-                        table.insert(sideCode, {name = dir, code = readFile('resource/'..dir)})
+                        table.insert(sideCode, {name = dir, code = handleModule(readFile('resource/'..dir))})
                     end
                 end
             end
@@ -164,6 +170,10 @@ function pText(text)
     return newString
 end
 
+function handleModule(text)
+    return text:gsub('module%(([^,]-)%)','_G[%1]()')
+end
+
 function createFolder(name, dir) -- dir beeing nil, will create on the exacly same dir that run the entire program
     if dir then
         os.execute('cd '..dir..' && mkdir ' .. name)
@@ -179,6 +189,9 @@ end
 
 function readFile(dir)
     local file = io.open(dir,"r")
+    if not file then
+        error(tostring(dir) .. ' this directory doesnt exist')
+    end
     local content = file:read("*a")
     io.close(file)
     return content
@@ -191,7 +204,6 @@ function writeFile(name, text)
 end
 
 function transferFile(oldPath, newPath)
-    print(oldPath, newPath)
     os.rename(oldPath, newPath)
 end
 
