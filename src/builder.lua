@@ -70,7 +70,7 @@ function writeManifestContent(manifestCommands)
         manifestContent = manifestContent .. '\n\n'
     end
 
-    manifestContent = manifestContent .. 'server_script "script.lua"\n\nclient_script "script.lua"'
+    manifestContent = manifestContent .. 'shared_script "script.lua"'
 
     writeFile('dist/fxmanifest.lua', manifestContent)
 end
@@ -88,6 +88,21 @@ function writeScriptContent(manifestCommands)
     local sharedCode = constructText(sharedCodes)
     scriptCode = scriptCode .. '\n\n' .. sharedCode
     writeFile('dist/script.lua', scriptCode)
+    transferFiles(manifestCommands)
+end
+
+function transferFiles(manifestCommands) -- transfering filer from the resource
+    if type(manifestCommands.files) == 'table' then
+        for _,dir in pairs(manifestCommands.files[1]) do
+            local o = dir:split('/')
+            local sDirectory = 'dist/'
+            for _,value in ipairs(o) do
+                createFolder(value, sDirectory)
+                sDirectory = sDirectory .. value
+            end
+            transferFile('./resource/'..dir, './dist/'..dir)
+        end
+    end
 end
 
 function constructText(sideCodes)
@@ -106,11 +121,13 @@ function getAllSideCode(manifestCommands, side)
     local sideCode = {}
     for k,v in pairs(manifestCommands) do
         if patternKeys[k] == side then
-            if type(v[1]) == 'string' then
+            if type(v[1]) == 'string' and not v[1]:find('@') then
                 table.insert(sideCode, {name = v[1], code = readFile('resource/'..v[1])})
             else
                 for _,dir in ipairs(v[1]) do
-                    table.insert(sideCode, {name = dir, code = readFile('resource/'..dir)})
+                    if not dir:find('@') then
+                        table.insert(sideCode, {name = dir, code = readFile('resource/'..dir)})
+                    end
                 end
             end
         end
@@ -171,6 +188,11 @@ function writeFile(name, text)
     local file = io.open(name, "w")
     file:write(text)
     file:close()
+end
+
+function transferFile(oldPath, newPath)
+    print(oldPath, newPath)
+    os.rename(oldPath, newPath)
 end
 
 function table:clone()
@@ -262,6 +284,17 @@ function table:dump()
     output_str = table.concat(output)
 
     print(output_str)
+end
+
+function string:split(sep)
+    if sep == nil then sep = "%s" end
+    local t={}
+    local i=1
+    for self in string.gmatch(self, "([^"..sep.."]+)") do
+        t[i] = self
+        i = i + 1
+    end
+    return t
 end
 
 loadManifest() -- reading the manifest
