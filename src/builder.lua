@@ -381,7 +381,7 @@ function pText(text)
 end
 
 function handleModule(text)
-    return text:gsub('module%(([^,]-)%)','_G[%1]()')
+    return text:gsub('module%(([^,]-)%)','_G[%1..".lua"]()'):gsub('require%(([^,]-)%)','_G[%1..".lua"]()')
 end
 
 function createFolder(name, dir) -- dir beeing nil, will create on the exacly same dir that run the entire program
