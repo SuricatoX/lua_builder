@@ -167,6 +167,10 @@ function transferFiles(manifestCommands) -- transfering filer from the resource
                 end
             end
             transferFile('./resource/'..dir, './dist/'..dir)
+            local name, extension = dir:getFileNameExtension()
+            if extension == 'lua' then
+                handleFile('./dist/'..dir)
+            end
         end
     end
 end
@@ -420,6 +424,16 @@ function addOnFile(name, text)
     file:write(content.. '\n' .. text)
     file:close(file)
     file2:close(file2)
+end
+
+function handleFile(name)
+    local file2 = io.open(name,"r")
+    local content = file2:read("*a")
+    local handledContent = handleModule(content)
+    file2:close()
+    local file = io.open(name, "w")
+    file:write(handledContent)
+    file:close()
 end
 
 function transferFile(oldPath, newPath)
