@@ -92,11 +92,11 @@ function loadManifest() -- load manifest as a normal code
 
     createDocument('dist/script.lua') -- Creating the base script code
 
-    handleManifestCommands(manifestCommands)
+    local manifestCommandsHandled = handleManifestCommands(manifestCommands)
 
-    writeManifestContent(manifestCommands) -- Writing commands into manifest
+    writeManifestContent(manifestCommandsHandled) -- Writing commands into manifest
 
-    writeScriptContent(manifestCommands) -- Write into script.lua server, client and also shared
+    writeScriptContent(manifestCommandsHandled) -- Write into script.lua server, client and also shared
 end
 
 function removeSingularCommandsInManifest(manifestCommands)
@@ -150,9 +150,9 @@ function writeScriptContent(manifestCommands)
     writeFile('dist/script.lua', scriptCode)
     transferFiles(manifestCommands)
 
-    print(print('\27[32m\n\n\n\n'))
-    print(print('\27[32mYour script was sucessfully builded!'))
-    print(print('\27[32mCheck releases on https://github.com/SuricatoX/lua_builder'))
+    print('\27[32m\n\n\n\n')
+    print('\27[32mYour script was sucessfully builded!')
+    print('\27[32mCheck releases on https://github.com/SuricatoX/lua_builder')
 end
 
 function transferFiles(manifestCommands) -- transfering filer from the resource
@@ -188,11 +188,24 @@ function getAllSideCode(manifestCommands, side)
     for k,v in pairs(manifestCommands) do
         if patternKeys[k] == side then
             if type(v[1]) == 'string' and not v[1]:find('@') then
-                table.insert(sideCode, {name = v[1], code = handleModule(readFile('resource/'..v[1]))})
+                local name,extension = v[1]:getFileNameExtension()
+                if extension == 'lua' then
+                    table.insert(sideCode, {name = v[1], code = handleModule(readFile('resource/'..v[1]))})
+                else
+
+                    transferFiles({files = {dir}})
+                    addOnFile('dist/fxmanifest.lua', k .. ' ' .. writeText(dir))
+                end
             else
                 for _,dir in ipairs(v[1]) do
                     if not dir:find('@') then
-                        table.insert(sideCode, {name = dir, code = handleModule(readFile('resource/'..dir))})
+                        local name,extension = dir:getFileNameExtension()
+                        if extension == 'lua' then
+                            table.insert(sideCode, {name = dir, code = handleModule(readFile('resource/'..dir))})
+                        else
+                            transferFiles({files = {{dir}}})
+                            addOnFile('dist/fxmanifest.lua', singularKeys[k] .. ' ' .. writeText(dir))
+                        end
                     end
                 end
             end
@@ -202,35 +215,139 @@ function getAllSideCode(manifestCommands, side)
 end
 
 function handleManifestCommands(manifestCommands)
+    local manifestCommandsHandled = {}
     for command,v in pairs(manifestCommands) do
-        if directoryKeys[command] then
-            if type(v[1]) == 'string' then
-                local dir = v[1]
-                local o = dir:split('/')
-                local sDirectory = ''
-                for _,word in ipairs(o) do
-                    if word:find('%*%*') then -- Vendo se é pra pegar todas as pastas naquela word
-                        local allFiles = findAllFiles(sDirectory)
-                        for f in allFiles:lines() do
-                            if not f:find('%.') then
-                                manifestCommands
-                            end
+        if directoryKeys[command] then -- Directory command?
+            manifestCommandsHandled[command] = {{}}
+            for i,dir in ipairs(v[1]) do -- The array with dir
+                local dirs = handleDir(dir)
+                for _,handledDir in ipairs(dirs) do
+                    table.insert(manifestCommandsHandled[command][1], handledDir)
+                end
+            end
+        else -- Simply its not a directory command, so inherits this
+            manifestCommandsHandled[command] = v
+        end
+    end
+    return manifestCommandsHandled
+end
+
+function handleDir(_dir)
+    local dirs = {
+        [_dir] = true
+    }
+    if _dir:find('%*') then
+        
+        local function multipleFolders()
+            for dir in pairs(dirs) do
+                if dir:find('%*%*') then
+                    local preDir,posDir = dir:match('(.-/)%*%*(/.+)')
+                    local allFiles = findAllFiles(preDir)
+                    for f in allFiles:lines() do
+                        if f:isAFolder() then
+                            dirs[preDir .. f .. posDir] = true
+                            dirs[dir] = nil
                         end
                     end
-                    sDirectory = sDirectory .. word .. '/'
-                end
-            else
-                for _,dir in ipairs(v[1]) do
-
                 end
             end
         end
+
+        while hasArrayBadDir(dirs,'%*%*') do 
+            print(debug.getinfo( function()end ).linedefined)
+            multipleFolders()
+        end
+
+        local function multipleFiles()
+            for dir in pairs(dirs) do
+                print(dir)
+                if dir:find('%*%.%*') then
+                    local preDir = dir:match('(.+%/)([%w*-.]+%.[a-zA-Z*][a-zA-Z]?[a-zA-Z]?)$')
+                    local allFiles = findAllFiles(preDir)
+                    for f in allFiles:lines() do
+                        if not f:isAFolder() then
+                            dirs[preDir .. f] = true
+                            dirs[dir] = nil
+                        end
+                    end
+                end
+            end
+        end
+
+        while hasArrayBadDir(dirs,'%*%.%*') do
+            print(debug.getinfo( function()end ).linedefined)
+            multipleFiles()
+        end
+
+        local function multipleFilesSameExtension()
+            for dir in pairs(dirs) do
+                if dir:find('%*%.') then
+                    local preDir,posDir = dir:match('(.+%/)([%w*-.]+%.[a-zA-Z*][a-zA-Z]?[a-zA-Z]?)$')
+                    local name, extension = posDir:getFileNameExtension()
+                    local allFiles = findAllFiles(preDir)
+                    for f in allFiles:lines() do
+                        if not f:isAFolder() then
+                            local fileName, fileExtension = f:getFileNameExtension()
+                            if fileExtension == extension then
+                                dirs[preDir .. f] = true
+                                dirs[dir] = nil
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        while hasArrayBadDir(dirs,'%*%.') do
+            print(debug.getinfo( function()end ).linedefined)
+            multipleFilesSameExtension()
+        end
+
+        local function multipleFilesSameName()
+            for dir in pairs(dirs) do
+                if not dir:find('%.%*') then
+                    local preDir,posDir = dir:match('(.+%/)([%w*-.]+%.[a-zA-Z*][a-zA-Z]?[a-zA-Z]?)$')
+                    print(debug.getinfo(function()end).linedefined, preDir)
+                    local name, extension = posDir:getFileNameExtension()
+                    local allFiles = findAllFiles(preDir)
+                    for f in allFiles:lines() do
+                        if not f:isAFolder() then
+                            local fileName, fileExtension = f:getFileNameExtension()
+                            if fileName == name then
+                                dirs[preDir .. f] = true
+                                dirs[dir] = nil
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        while hasArrayBadDir(dirs,'%.%*') do
+            print(debug.getinfo( function()end ).linedefined)
+            multipleFilesSameName()
+        end
+
+        table.dump(dirs)
+        
+        return table.invert(dirs)
     end
+    return table.invert(dirs)
+end
+
+function hasArrayBadDir(arr, badDir)
+    for dir in pairs(arr) do
+        if dir:find(badDir) then
+            return true
+        end
+    end
+    return false
 end
 
 function findAllFiles(dir)
     local i,t = 0,{}
-    local pfile = io.popen('dir "resource/'..dir..'" /b')
+    -- local pFile = io.popen('dir "resource/'..dir..'" /b')
+    local pFile = io.popen('cd "resource/'..dir..'" && dir "" /b')
     return pFile
 end
 
@@ -294,6 +411,15 @@ function writeFile(name, text)
     local file = io.open(name, "w")
     file:write(text)
     file:close()
+end
+
+function addOnFile(name, text)
+    local file2 = io.open(name,"r")
+    local content = file2:read("*a")
+    local file = io.open(name,"w+")
+    file:write(content.. '\n' .. text)
+    file:close(file)
+    file2:close(file2)
 end
 
 function transferFile(oldPath, newPath)
@@ -400,6 +526,22 @@ function string:split(sep)
         i = i + 1
     end
     return t
+end
+
+function string:isAFolder()
+    return not self:find('%.')
+end
+
+function string:getFileNameExtension()
+    return self:match("(.+)%.(.+)")
+end
+
+function table:invert()
+	local instance = {}
+	for k,v in pairs(self) do
+		table.insert(instance, k)
+	end
+	return instance
 end
 
 loadManifest() -- reading the manifest
