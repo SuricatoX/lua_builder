@@ -6,13 +6,7 @@ local patternKeys = {
     client_scripts = 'client',
     client_script = 'client',
     shared_scripts = 'shared',
-    shared_script = 'shared',
-    ignore_server_scripts = 'server',
-    ignore_server_script = 'server',
-    ignore_client_scripts = 'client',
-    ignore_client_script = 'client',
-    ignore_shared_scripts = 'shared',
-    ignore_shared_script = 'shared'
+    shared_script = 'shared'
 }
 
 local pluralKeys = {
@@ -179,9 +173,9 @@ function writeScriptContent(manifestCommands)
     local clientCode = constructText(clientCodes)
     scriptCode = scriptCode .. pText(pText(clientCode)) .. pText('\nend')
     scriptCode = scriptCode .. '\nend)' -- closing the CreateThreadNow lol
-    scriptCode = config.preCode .. '\n\n' .. scriptCode
     local token = string.random(40)
     scriptCode = scriptCode:gsub('__isAuth__ = true', '') -- lmao
+    scriptCode = config.preCode .. '\n\n' .. scriptCode
     scriptCode = scriptCode:gsub('__isAuth__', token) -- generating my random variable to auth (thats not really necessary, but i WANT, soooooooooooooooo)
     writeFile('dist/script.lua', scriptCode)
     transferFiles(manifestCommands)
