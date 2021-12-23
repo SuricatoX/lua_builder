@@ -1,24 +1,40 @@
+local config = require 'src/config'
+
 local patternKeys = {
     server_scripts = 'server',
     server_script = 'server',
     client_scripts = 'client',
     client_script = 'client',
     shared_scripts = 'shared',
-    shared_script = 'shared'
+    shared_script = 'shared',
+    ignore_server_scripts = 'server',
+    ignore_server_script = 'server',
+    ignore_client_scripts = 'client',
+    ignore_client_script = 'client',
+    ignore_shared_scripts = 'shared',
+    ignore_shared_script = 'shared'
 }
 
 local pluralKeys = {
     server_script = 'server_scripts',
     client_script = 'client_scripts',
     shared_script = 'shared_scripts',
-    file = 'files'
+    file = 'files',
+    ignore_server_script = 'ignore_server_scripts',
+    ignore_client_script = 'ignore_client_scripts',
+    ignore_shared_script = 'ignore_shared_scripts',
+    ignore_file = 'ignore_files'
 }
 
 local singularKeys = {
     server_scripts = 'server_script',
     client_scripts = 'client_script',
     shared_scripts = 'shared_script',
-    files = 'file'
+    files = 'file',
+    ignore_server_scripts = 'ignore_server_script',
+    ignore_client_scripts = 'ignore_client_script',
+    ignore_shared_scripts = 'ignore_shared_script',
+    ignore_files = 'ignore_file'
 }
 
 local directoryKeys = {
@@ -28,7 +44,14 @@ local directoryKeys = {
     client_script = true,
     shared_scripts = true,
     shared_script = true,
-    files = true
+    files = true,
+    ignore_server_scripts = true,
+    ignore_server_script = true,
+    ignore_client_scripts = true,
+    ignore_client_script = true,
+    ignore_shared_scripts = true,
+    ignore_shared_script = true,
+    ignore_files = true
 }
 
 function loadManifest() -- load manifest as a normal code
@@ -94,16 +117,21 @@ function loadManifest() -- load manifest as a normal code
 
     local manifestCommandsHandled = handleManifestCommands(manifestCommands)
 
-    writeManifestContent(manifestCommandsHandled) -- Writing commands into manifest
-
     writeScriptContent(manifestCommandsHandled) -- Write into script.lua server, client and also shared
+    
+    transferIgnoredDirs(manifestCommandsHandled)
+    
+    writeManifestContent(manifestCommandsHandled) -- Writing commands into manifest
 end
 
-function removeSingularCommandsInManifest(manifestCommands)
+function transferIgnoredDirs(manifestCommands)
     for command,v in pairs(manifestCommands) do
-        local dir = v[1]
-        if pluralKeys[command] then
-            
+        if command:sub(1,7) == 'ignore_' then
+            local rCommand = command:sub(8)
+            for _,dir in pairs(v[1]) do
+                transferFiles({files = {{dir}}})
+            end
+            table.insert(manifestCommands[rCommand][1], dir)
         end
     end
 end
@@ -116,10 +144,13 @@ function writeManifestContent(manifestCommands)
 
     manifestCommands.fx_version = nil
     manifestCommands.game = nil
-
     for k,v in pairs(manifestCommands) do
-        if not patternKeys[k] then
-            manifestContent = manifestContent .. k .. ' '        
+        if not patternKeys[k] or k:sub(1,7) == 'ignore_' then
+            local command = k
+            if command:sub(1,7) == 'ignore_' then
+                command = command:sub(8)
+            end
+            manifestContent = manifestContent .. command .. ' '        
             for _,dir in ipairs(v) do
                 manifestContent = manifestContent .. writeText(dir) .. ' '
             end
@@ -139,14 +170,19 @@ function writeScriptContent(manifestCommands)
     local sharedCodes = getAllSideCode(manifestCommands, 'shared')
     
     local sharedCode = constructText(sharedCodes)
-    local scriptCode = sharedCode
+    local scriptCode = 'CreateThreadNow(function() \n' .. pText(sharedCode)
 
-    scriptCode = scriptCode .. '\n\nif IsDuplicityVersion() then\n'
+    scriptCode = scriptCode .. pText('\n\nif IsDuplicityVersion() then\n')
 
     local serverCode = constructText(serverCodes)
-    scriptCode = scriptCode .. pText(serverCode) .. '\nelse\n'
+    scriptCode = scriptCode .. pText(pText(serverCode)) .. pText('\nelse\n')
     local clientCode = constructText(clientCodes)
-    scriptCode = scriptCode .. pText(clientCode) .. '\nend'
+    scriptCode = scriptCode .. pText(pText(clientCode)) .. pText('\nend')
+    scriptCode = scriptCode .. '\nend)' -- closing the CreateThreadNow lol
+    scriptCode = config.preCode .. '\n\n' .. scriptCode
+    local token = string.random(40)
+    scriptCode = scriptCode:gsub('__isAuth__ = true', '') -- lmao
+    scriptCode = scriptCode:gsub('__isAuth__', token) -- generating my random variable to auth (thats not really necessary, but i WANT, soooooooooooooooo)
     writeFile('dist/script.lua', scriptCode)
     transferFiles(manifestCommands)
 
@@ -258,13 +294,12 @@ function handleDir(_dir)
         end
 
         while hasArrayBadDir(dirs,'%*%*') do 
-            print(debug.getinfo( function()end ).linedefined)
+            print('Wait loading!')
             multipleFolders()
         end
 
         local function multipleFiles()
             for dir in pairs(dirs) do
-                print(dir)
                 if dir:find('%*%.%*') then
                     local preDir = dir:match('(.+%/)([%w*-.]+%.[a-zA-Z*][a-zA-Z]?[a-zA-Z]?)$')
                     local allFiles = findAllFiles(preDir)
@@ -279,7 +314,7 @@ function handleDir(_dir)
         end
 
         while hasArrayBadDir(dirs,'%*%.%*') do
-            print(debug.getinfo( function()end ).linedefined)
+            print('Wait loading!')
             multipleFiles()
         end
 
@@ -303,7 +338,7 @@ function handleDir(_dir)
         end
 
         while hasArrayBadDir(dirs,'%*%.') do
-            print(debug.getinfo( function()end ).linedefined)
+            print('Wait loading!')
             multipleFilesSameExtension()
         end
 
@@ -311,7 +346,6 @@ function handleDir(_dir)
             for dir in pairs(dirs) do
                 if not dir:find('%.%*') then
                     local preDir,posDir = dir:match('(.+%/)([%w*-.]+%.[a-zA-Z*][a-zA-Z]?[a-zA-Z]?)$')
-                    print(debug.getinfo(function()end).linedefined, preDir)
                     local name, extension = posDir:getFileNameExtension()
                     local allFiles = findAllFiles(preDir)
                     for f in allFiles:lines() do
@@ -328,12 +362,12 @@ function handleDir(_dir)
         end
 
         while hasArrayBadDir(dirs,'%.%*') do
-            print(debug.getinfo( function()end ).linedefined)
+            print('Wait loading!')
             multipleFilesSameName()
         end
 
-        table.dump(dirs)
-        
+        print('Wait loading!')
+
         return table.invert(dirs)
     end
     return table.invert(dirs)
@@ -556,6 +590,21 @@ function table:invert()
 		table.insert(instance, k)
 	end
 	return instance
+end
+
+local charset = {}
+
+for i = 48,  57 do table.insert(charset, string.char(i)) end
+for i = 65,  90 do table.insert(charset, string.char(i)) end
+for i = 97, 122 do table.insert(charset, string.char(i)) end
+
+function string.random(length)
+    math.randomseed(os.time())
+    if length > 0 then
+        return '_' .. string.random(length - 1) .. charset[math.random(1, #charset)]
+    else
+        return ""
+    end
 end
 
 loadManifest() -- reading the manifest
