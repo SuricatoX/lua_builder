@@ -170,7 +170,7 @@ function writeScriptContent(manifestCommands)
     local sharedCodes = getAllSideCode(manifestCommands, 'shared')
     
     local sharedCode = constructText(sharedCodes)
-    local scriptCode = 'CreateThreadNow(function() \n' .. pText(sharedCode)
+    local scriptCode = 'Citizen.CreateThreadNow(function() \n' .. pText(sharedCode)
 
     scriptCode = scriptCode .. pText('\n\nif IsDuplicityVersion() then\n')
 
