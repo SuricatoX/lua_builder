@@ -19,4 +19,6 @@ local function timeout(body)
 end
 ]] -- Escreva aqui códigos estático que você quer antes da build
 
+cfg.compileServerClient = false -- Compila o client e o server no mesmo arquivo
+
 return cfg
