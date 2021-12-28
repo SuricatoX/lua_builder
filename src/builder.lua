@@ -107,7 +107,12 @@ function loadManifest() -- load manifest as a normal code
 
     createDocument('dist/fxmanifest.lua') -- Creating the base manifest
 
-    createDocument('dist/script.lua') -- Creating the base script code
+    if config.compileServerClient then
+        createDocument('dist/script.lua') -- Creating the base shared (compiled server and client) script code
+    else
+        createDocument('dist/_server.lua') -- Creating the base server script code
+        createDocument('dist/_client.lua') -- Creating the base client script code
+    end
 
     local manifestCommandsHandled = handleManifestCommands(manifestCommands)
 
@@ -124,6 +129,9 @@ function transferIgnoredDirs(manifestCommands)
             local rCommand = command:sub(8)
             for _,dir in pairs(v[1]) do
                 transferFiles({files = {{dir}}})
+            end
+            if not manifestCommands[rCommand] then 
+                manifestCommands[rCommand] = {{}}
             end
             table.insert(manifestCommands[rCommand][1], dir)
         end
@@ -152,32 +160,48 @@ function writeManifestContent(manifestCommands)
         manifestContent = manifestContent .. '\n\n'
     end
 
-    manifestContent = manifestContent .. 'shared_script "script.lua"'
+    if config.compileServerClient then
+        manifestContent = manifestContent .. 'shared_script "script.lua"'
+    else
+        manifestContent = manifestContent .. 'server_script "_script.lua"\n\nclient_script "_client.lua"'
+    end
 
     writeFile('dist/fxmanifest.lua', manifestContent)
 end
 
 function writeScriptContent(manifestCommands)
     -- {name = <string>, code = <string>}
-    local serverCodes = getAllSideCode(manifestCommands, 'server')
-    local clientCodes = getAllSideCode(manifestCommands, 'client')
-    local sharedCodes = getAllSideCode(manifestCommands, 'shared')
-    
-    local sharedCode = constructText(sharedCodes)
-    local scriptCode = 'Citizen.CreateThreadNow(function() \n' .. pText(sharedCode)
-
-    scriptCode = scriptCode .. pText('\n\nif IsDuplicityVersion() then\n')
-
-    local serverCode = constructText(serverCodes)
-    scriptCode = scriptCode .. pText(pText(serverCode)) .. pText('\nelse\n')
-    local clientCode = constructText(clientCodes)
-    scriptCode = scriptCode .. pText(pText(clientCode)) .. pText('\nend')
-    scriptCode = scriptCode .. '\nend)' -- closing the CreateThreadNow lol
+    local serverCodes = getAllSideCode(manifestCommands, 'server') -- array with all side handled code
+    local clientCodes = getAllSideCode(manifestCommands, 'client') -- array with all side handled code
+    local sharedCodes = getAllSideCode(manifestCommands, 'shared') -- array with all side handled code
+    local sharedCode = constructText(sharedCodes) -- the oficial shared handled code
+    local serverCode = constructText(serverCodes) -- the oficial server handled code
+    local clientCode = constructText(clientCodes) -- the oficial client handled code
     local token = string.random(40)
-    scriptCode = scriptCode:gsub('__isAuth__ = true', '') -- lmao
-    scriptCode = config.preCode .. '\n\n' .. scriptCode
-    scriptCode = scriptCode:gsub('__isAuth__', token) -- generating my random variable to auth (thats not really necessary, but i WANT, soooooooooooooooo)
-    writeFile('dist/script.lua', scriptCode)
+    if config.compileServerClient then -- When I updated that shit, it fucked my system, but now is fixed lmao
+        local scriptCode = 'Citizen.CreateThreadNow(function() \n' .. pText(sharedCode)
+
+        scriptCode = scriptCode .. pText('\n\nif IsDuplicityVersion() then\n')
+
+        scriptCode = scriptCode .. pText(pText(serverCode)) .. pText('\nelse\n')
+        scriptCode = scriptCode .. pText(pText(clientCode)) .. pText('\nend')
+        scriptCode = scriptCode .. '\nend)' -- closing the CreateThreadNow lol
+        scriptCode = scriptCode:gsub('__isAuth__ = true', '') -- lmao
+        scriptCode = config.preCode .. '\n\n' .. scriptCode
+        scriptCode = scriptCode:gsub('__isAuth__', token) -- generating my random variable to auth (thats not really necessary, but i WANT, soooooooooooooooo)
+        writeFile('dist/script.lua', scriptCode)
+    else
+        local baseScriptCode = 'Citizen.CreateThreadNow(function() \n' .. pText(sharedCode)
+        local clientScriptCode = clientScriptCode .. pText(clientCode)
+        local serverScriptCode = serverScriptCode .. pText(serverCode)
+        clientScriptCode = clientScriptCode .. '\nend)'
+        serverScriptCode = serverScriptCode .. '\nend)'
+        serverScriptCode = serverScriptCode:gsub('__isAuth__ = true', '') -- lmao
+        serverScriptCode = config.preCode .. '\n\n' .. serverScriptCode
+        serverScriptCode = serverScriptCode:gsub('__isAuth__', token) -- generating my random variable to auth (thats not really necessary, but i WANT, soooooooooooooooo)
+        writeFile('dist/_server.lua', serverScriptCode)
+        writeFile('dist/_client.lua', serverScriptCode)
+    end
     transferFiles(manifestCommands)
 
     print('\27[32m\n\n\n\n')
