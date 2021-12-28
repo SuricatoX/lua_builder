@@ -192,15 +192,17 @@ function writeScriptContent(manifestCommands)
         writeFile('dist/script.lua', scriptCode)
     else
         local baseScriptCode = 'Citizen.CreateThreadNow(function() \n' .. pText(sharedCode)
-        local clientScriptCode = clientScriptCode .. pText(clientCode)
-        local serverScriptCode = serverScriptCode .. pText(serverCode)
+        local clientScriptCode = ''
+        local serverScriptCode = ''
+        clientScriptCode = clientScriptCode .. pText(clientCode)
+        serverScriptCode = serverScriptCode .. pText(serverCode)
         clientScriptCode = clientScriptCode .. '\nend)'
         serverScriptCode = serverScriptCode .. '\nend)'
         serverScriptCode = serverScriptCode:gsub('__isAuth__ = true', '') -- lmao
         serverScriptCode = config.preCode .. '\n\n' .. serverScriptCode
         serverScriptCode = serverScriptCode:gsub('__isAuth__', token) -- generating my random variable to auth (thats not really necessary, but i WANT, soooooooooooooooo)
         writeFile('dist/_server.lua', serverScriptCode)
-        writeFile('dist/_client.lua', serverScriptCode)
+        writeFile('dist/_client.lua', clientScriptCode)
     end
     transferFiles(manifestCommands)
 
