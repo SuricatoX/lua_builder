@@ -103,24 +103,24 @@ function loadManifest() -- load manifest as a normal code
 
     setmetatable(_G, nil) -- removing the magic method system do detect manifest
 
-    createFolder('dist') -- Creating the result folder
+    createFolder('dist') -- creating the result folder
 
-    createDocument('dist/fxmanifest.lua') -- Creating the base manifest
+    createDocument('dist/fxmanifest.lua') -- creating the base manifest
 
     if config.compileServerClient then
-        createDocument('dist/script.lua') -- Creating the base shared (compiled server and client) script code
+        createDocument('dist/script.lua') -- creating the base shared (compiled server and client) script code
     else
-        createDocument('dist/_server.lua') -- Creating the base server script code
-        createDocument('dist/_client.lua') -- Creating the base client script code
+        createDocument('dist/_server.lua') -- creating the base server script code
+        createDocument('dist/_client.lua') -- creating the base client script code
     end
 
     local manifestCommandsHandled = handleManifestCommands(manifestCommands)
 
-    writeScriptContent(manifestCommandsHandled) -- Write into script.lua server, client and also shared
+    writeScriptContent(manifestCommandsHandled) -- write into script.lua server, client and also shared
     
     transferIgnoredDirs(manifestCommandsHandled)
     
-    writeManifestContent(manifestCommandsHandled) -- Writing commands into manifest
+    writeManifestContent(manifestCommandsHandled) -- writing commands into manifest
 end
 
 function transferIgnoredDirs(manifestCommands)
@@ -139,10 +139,10 @@ function transferIgnoredDirs(manifestCommands)
 end
 
 function writeManifestContent(manifestCommands)
-    local manifestContent = 'fx_version ' -- Creating base string
+    local manifestContent = 'fx_version ' -- creating base string
 
-    manifestContent = manifestContent..writeText(manifestCommands.fx_version[1])..'\n' -- Base start into manifest
-    manifestContent = manifestContent..'game '..writeText(manifestCommands.game[1])..'\n\n' -- Base start into manifest
+    manifestContent = manifestContent..writeText(manifestCommands.fx_version[1])..'\n' -- base start into manifest
+    manifestContent = manifestContent..'game '..writeText(manifestCommands.game[1])..'\n\n' -- base start into manifest
 
     manifestCommands.fx_version = nil
     manifestCommands.game = nil
