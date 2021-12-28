@@ -192,8 +192,8 @@ function writeScriptContent(manifestCommands)
         writeFile('dist/script.lua', scriptCode)
     else
         local baseScriptCode = 'Citizen.CreateThreadNow(function() \n' .. pText(sharedCode)
-        local clientScriptCode = ''
-        local serverScriptCode = ''
+        local clientScriptCode = baseScriptCode
+        local serverScriptCode = baseScriptCode
         clientScriptCode = clientScriptCode .. pText(clientCode)
         serverScriptCode = serverScriptCode .. pText(serverCode)
         clientScriptCode = clientScriptCode .. '\nend)'
