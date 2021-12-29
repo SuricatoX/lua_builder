@@ -45,7 +45,8 @@ local directoryKeys = {
     ignore_client_script = true,
     ignore_shared_scripts = true,
     ignore_shared_script = true,
-    ignore_files = true
+    ignore_files = true,
+    transfer = true
 }
 
 function loadManifest() -- load manifest as a normal code
@@ -229,6 +230,19 @@ function transferFiles(manifestCommands) -- transfering filer from the resource
             end
         end
     end
+    if type(manifestCommands.transfer) == 'table' then -- yes, i freaking copied the code above and I could make a better code in this case, but, i just dont want, I'm in a hurry to end this project
+        for _,dir in pairs(manifestCommands.transfer[1]) do
+            local o = dir:split('/')
+            local sDirectory = 'dist/'
+            for _,value in ipairs(o) do
+                if _ < #o then -- Dont load on the last index
+                    createFolder(value, sDirectory)
+                    sDirectory = sDirectory .. value .. '/'
+                end
+            end
+            transferFile('./resource/'..dir, './dist/'..dir)
+        end
+    end
 end
 
 function constructText(sideCodes)
@@ -303,11 +317,16 @@ function handleDir(_dir)
                 if dir:find('%*%*') then
                     local preDir,posDir = dir:match('(.-/)%*%*(/.+)')
                     local allFiles = findAllFiles(preDir)
+                    local hasFolder = false
                     for f in allFiles:lines() do
                         if f:isAFolder() then
+                            hasFolder = true
                             dirs[preDir .. f .. posDir] = true
                             dirs[dir] = nil
                         end
+                    end
+                    if not hasFolder then
+                        dirs[dir] = nil
                     end
                 end
             end
@@ -315,6 +334,7 @@ function handleDir(_dir)
 
         while hasArrayBadDir(dirs,'%*%*') do 
             print('Wait loading!')
+            table.dump(dirs)
             multipleFolders()
         end
 
@@ -323,17 +343,23 @@ function handleDir(_dir)
                 if dir:find('%*%.%*') then
                     local preDir = dir:match('(.+%/)([%w*-.]+%.[a-zA-Z*][a-zA-Z]?[a-zA-Z]?)$')
                     local allFiles = findAllFiles(preDir)
+                    local hasFile = false
                     for f in allFiles:lines() do
                         if not f:isAFolder() then
+                            hasFile = true
                             dirs[preDir .. f] = true
                             dirs[dir] = nil
                         end
+                    end
+                    if not hasFile then -- there is no file on the folder, so it need to be ignored, because its tasking all files from the folder, but there is no file on the folder
+                        dirs[dir] = nil
                     end
                 end
             end
         end
 
         while hasArrayBadDir(dirs,'%*%.%*') do
+            table.dump(dirs)
             print('Wait loading!')
             multipleFiles()
         end
