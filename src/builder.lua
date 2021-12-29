@@ -163,7 +163,7 @@ function writeManifestContent(manifestCommands)
     if config.compileServerClient then
         manifestContent = manifestContent .. 'shared_script "script.lua"'
     else
-        manifestContent = manifestContent .. 'server_script "_script.lua"\n\nclient_script "_client.lua"'
+        manifestContent = manifestContent .. 'server_script "_server.lua"\n\nclient_script "_client.lua"'
     end
 
     writeFile('dist/fxmanifest.lua', manifestContent)
