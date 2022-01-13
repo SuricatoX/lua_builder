@@ -219,13 +219,15 @@ function transferFiles(manifestCommands) -- transfering filer from the resource
             local sDirectory = 'dist/'
             for _,value in ipairs(o) do
                 if _ < #o then -- Dont load on the last index
-                    createFolder(value, sDirectory)
+                    if not value:find('@') and not sDirectory:find('@') then
+                        createFolder(value, sDirectory)
+                    end
                     sDirectory = sDirectory .. value .. '/'
                 end
             end
             transferFile('./resource/'..dir, './dist/'..dir)
             local name, extension = dir:getFileNameExtension()
-            if extension == 'lua' then
+            if extension == 'lua' and not dir:find('@') then
                 handleFile('./dist/'..dir)
             end
         end
@@ -261,12 +263,11 @@ function getAllSideCode(manifestCommands, side)
     local sideCode = {}
     for k,v in pairs(manifestCommands) do
         if patternKeys[k] == side then
-            if type(v[1]) == 'string' and not v[1]:find('@') then
+            if type(v[1]) == 'string' and not dir:find('@') then
                 local name,extension = v[1]:getFileNameExtension()
                 if extension == 'lua' then
                     table.insert(sideCode, {name = v[1], code = handleModule(readFile('resource/'..v[1]))})
                 else
-
                     transferFiles({files = {dir}})
                     addOnFile('dist/fxmanifest.lua', k .. ' ' .. writeText(dir))
                 end
@@ -469,6 +470,7 @@ function handleModule(text)
 end
 
 function createFolder(name, dir) -- dir beeing nil, will create on the exacly same dir that run the entire program
+    print(name, dir)
     if dir then
         os.execute('cd '..dir..' && mkdir ' .. name)
     else
